@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fiber Color Code</title>
+  <meta name="theme-color" content="#121212">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Fiber Color Code">
+  <style>
+    .range-fields {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .range-fields input {
+      width: 100%;
+      min-width: 0;
+    }
+    .num-input[aria-invalid="true"] {
+      border-color: #ff8a80;
+    }
+    .range-hint, .field-msg {
+      margin-top: 14px;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+    .field-msg { margin-top: 10px; }
+    .range-hint.is-error, .field-msg.is-error {
+      color: #ff8a80;
+      font-weight: 600;
+    }
+    .range-results {
+      list-style: none;
+      margin-top: 14px;
+    }
+    .range-row {
+      display: grid;
+      grid-template-columns: 5.6em repeat(2, minmax(0, 1fr));
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .range-number {
+      font-size: 0.85rem;
+      white-space: nowrap;
+    }
+    /* Very narrow screens: put "Fiber #n" on its own line above the pills. */
+    @media (max-width: 400px) {
+      .range-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 4px 8px;
+        margin-top: 12px;
+      }
+      .range-number {
+        grid-column: 1 / -1;
+      }
+    }
+    .range-row .tag-container {
+      min-width: 0;
+      padding: 8px 6px;
+      text-align: center;
+      align-self: stretch;
+    }
+    .range-summary {
+      margin-top: 14px;
+      padding: 10px 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      line-height: 1.5;
+      color: var(--text);
+      background: rgba(33, 150, 243, 0.12);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+    }
+
+    /* Pills with tracer stripes */
+    .color-pill { flex-wrap: wrap; }
+    .color-pill.has-stripes {
+      flex-direction: column;
+      gap: 4px;
+    }
+    .pill-stripe-text {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: none;
+      letter-spacing: 0;
+      line-height: 1.2;
+    }
+    .stripe-marks {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 3px;
+      max-width: 100%;
+    }
+    .stripe-marks i {
+      display: block;
+      width: 5px;
+      height: 16px;
+      border-radius: 1px;
+      /* Thin light edge keeps black dashes visible on dark colors. */
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.55);
+    }
+    .stripe-marks.stripe-yellow i { box-shadow: none; }
+    .stripe-marks i.group-start { margin-left: 5px; }
+
+    /* Fibers-per-tube control */
+    .field-title {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border: 1px solid #3a3a3a;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .segmented button {
+      background: #181818;
+      color: var(--text);
+      border: 0;
+      border-left: 1px solid #3a3a3a;
+      padding: 10px 0;
+      font-size: 1.05rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .segmented button:first-child { border-left: 0; }
+    .segmented button[aria-checked="true"] {
+      background: var(--accent);
+      color: #fff;
+    }
+    .note {
+      margin-top: 10px;
+      font-size: 0.8rem;
+      line-height: 1.45;
+      color: var(--text-dim);
+    }
+    .note-warn { color: #ffcc80; }
+
+    /* Stripe examples under the chart */
+    .stripe-legend {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .stripe-example {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+    .stripe-example-num {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: var(--text-dim);
+      min-width: 2.2em;
+    }
+
+    /* Update banner */
+    .update-banner {
+      position: fixed;
+      left: 50%;
+      bottom: 16px;
+      transform: translateX(-50%);
+      width: calc(100% - 32px);
+      max-width: 468px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      text-align: center;
+      padding: 14px 16px;
+      border-radius: 10px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+      z-index: 10;
+    }
+    .update-banner[hidden] { display: none; }
+    .app-version {
+      text-align: center;
+      font-size: 0.7rem;
+      color: #666;
+    }
+
+</style>
+  <style>
+    :root {
+      --bg: #121212;
+      --card-bg: #1e1e1e;
+      --card-border: #2a2a2a;
+      --text: #e0e0e0;
+      --text-dim: #a0a0a0;
+      --accent: #2196f3;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 16px;
+      padding-bottom: 40px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    header {
+      text-align: center;
+      padding: 12px 0 20px;
+    }
+    h1 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .badge-bar {
+      display: inline-block;
+      margin-top: 4px;
+      font-size: 0.75rem;
+      color: var(--accent);
+      background: rgba(33, 150, 243, 0.12);
+      padding: 2px 10px;
+      border-radius: 12px;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .input-row {
+      display: flex;
+      gap: 10px;
+    }
+    input.num-input {
+      flex: 1;
+      padding: 12px 16px;
+      font-size: 1.25rem;
+      border-radius: 8px;
+      border: 1px solid #3a3a3a;
+      background: #181818;
+      color: #fff;
+      font-weight: bold;
+      text-align: center;
+      outline: none;
+    }
+    input.num-input:focus {
+      border-color: var(--accent);
+    }
+    .result-box {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .tag-container {
+      background: #161616;
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border: 1px solid #2d2d2d;
+    }
+    .tag-label {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+    .color-pill {
+      width: 100%;
+      padding: 8px 6px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    .color-bullet {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      border: 1px solid rgba(0,0,0,0.3);
+    }
+    .grid-12 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .legend-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.4);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 800;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>TIA-598 Color Code</h1>
+    <div class="badge-bar">12 Colors / Telecom &amp; Data Center Standard</div>
+  </header>
+
+  <div class="card" aria-label="Cable settings">
+    <span class="field-title" id="perTubeTitle">Fibers per Tube</span>
+    <div class="segmented" role="radiogroup" aria-labelledby="perTubeTitle" id="perTubeGroup">
+      <button type="button" role="radio" data-per="6" aria-checked="false">6</button>
+      <button type="button" role="radio" data-per="12" aria-checked="true">12</button>
+      <button type="button" role="radio" data-per="24" aria-checked="false">24</button>
+    </div>
+    <p class="note">Ribbon cable? A 12-fiber ribbon can be treated like 12 fibers per tube (ribbon #1 = Blue, #2 = Orange, …).</p>
+  </div>
+
+  <div class="card">
+    <label for="fiberNum">Look Up a Specific Fiber</label>
+    <div class="input-row">
+      <input class="num-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="fiberNum" placeholder="e.g. 53" value="1" aria-describedby="fiberHint">
+    </div>
+    <p class="field-msg" id="fiberHint" role="status" hidden></p>
+
+    <div class="result-box">
+      <div class="tag-container">
+        <span class="tag-label" id="tubeLabel">Tube #1</span>
+        <div id="tubePill" class="color-pill">Blue</div>
+      </div>
+      <div class="tag-container">
+        <span class="tag-label" id="fiberInTubeLabel">Fiber #1 in Tube</span>
+        <div id="fiberPill" class="color-pill">Blue</div>
+      </div>
+    </div>
+  </div>
+
+  <section class="card" aria-label="Fiber range lookup">
+    <div class="range-fields">
+      <div>
+        <label for="rangeFrom">From</label>
+        <input class="num-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="rangeFrom" placeholder="e.g. 1" aria-describedby="rangeHint">
+      </div>
+      <div>
+        <label for="rangeTo">To</label>
+        <input class="num-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="rangeTo" placeholder="e.g. 12" aria-describedby="rangeHint">
+      </div>
+    </div>
+    <p class="range-hint" id="rangeHint" role="status">Enter From and To (whole numbers 1–1728) to list fibers.</p>
+    <p class="range-summary" id="rangeSummary" hidden></p>
+    <ol class="range-results" id="rangeResults" aria-label="Fiber range results" hidden></ol>
+  </section>
+
+  <div class="card">
+    <label>Standard Chart (1 to 12)</label>
+    <div class="grid-12" id="referenceGrid"></div>
+    <div class="stripe-legend" id="stripeLegend"></div>
+    <p class="note">Positions 13–24 repeat the 12 colors with 1 Black stripe, 25–36 with 2 stripes, and so on. Black units get a Yellow stripe instead. This applies to tubes 13+ and, at 24 per tube, to fibers 13–24.</p>
+    <p class="note note-warn">Stripe and dash conventions can vary by manufacturer — always check the cable spec sheet.</p>
+  </div>
+
+  <p class="app-version">Fiber Color Code v1.3</p>
+
+  <div class="update-banner" id="updateBanner" role="button" tabindex="0" hidden>New version available — tap to refresh</div>
+
+  <script>
+// Fiber Color Code — shared lookup logic (TIA-598 style colors + tracer stripes).
+// Works in the browser (window.FiberCode) and in Node (module.exports) for tests.
+(function (root) {
+  'use strict';
+
+  const MAX_FIBER = 1728;
+  const FIBERS_PER_TUBE_OPTIONS = [6, 12, 24];
+  const DEFAULT_FIBERS_PER_TUBE = 12;
+
+  // Base 12 colors. Background hex values are unchanged from v1.2.
+  // Text is dark on light/mid colors so it stays readable in sunlight.
+  const DARK = '#111111';
+  const LIGHT = '#ffffff';
+  const COLORS = [
+    { id: 1,  name: 'Blue',   bg: '#0055ff', text: LIGHT },
+    { id: 2,  name: 'Orange', bg: '#ff7700', text: DARK },
+    { id: 3,  name: 'Green',  bg: '#00a843', text: LIGHT },
+    { id: 4,  name: 'Brown',  bg: '#79442b', text: LIGHT },
+    { id: 5,  name: 'Slate',  bg: '#78828a', text: DARK },
+    { id: 6,  name: 'White',  bg: '#f0f0f0', text: DARK },
+    { id: 7,  name: 'Red',    bg: '#d91b1b', text: LIGHT },
+    { id: 8,  name: 'Black',  bg: '#1a1a1a', text: '#e0e0e0', border: '1px solid #444' },
+    { id: 9,  name: 'Yellow', bg: '#ffcc00', text: DARK },
+    { id: 10, name: 'Violet', bg: '#862d9c', text: LIGHT },
+    { id: 11, name: 'Rose',   bg: '#e85d9e', text: DARK },
+    { id: 12, name: 'Aqua',   bg: '#00b5ad', text: DARK }
+  ];
+  const STRIPE_HEX = { Black: '#000000', Yellow: '#ffcc00' };
+
+  // Color + stripe marking for a 1-based position (tube number or fiber-in-tube).
+  // 1–12: plain; 13–24: 1 stripe; 25–36: 2 stripes; ...
+  // Black units get a Yellow stripe instead of Black-on-Black.
+  function marking(position) {
+    const color = COLORS[(position - 1) % 12];
+    const stripes = Math.floor((position - 1) / 12);
+    const stripeColor = stripes ? (color.name === 'Black' ? 'Yellow' : 'Black') : null;
+    let stripeText = '';
+    if (stripes === 1) stripeText = `w/ ${stripeColor} stripe`;
+    else if (stripes > 1) stripeText = `w/ ${stripes} ${stripeColor} stripes`;
+    return {
+      position,
+      color,
+      stripes,
+      stripeColor,
+      stripeHex: stripeColor ? STRIPE_HEX[stripeColor] : null,
+      stripeText,
+      label: stripeText ? `${color.name} ${stripeText}` : color.name
+    };
+  }
+
+  function normalizePerTube(value) {
+    const n = Number(value);
+    return FIBERS_PER_TUBE_OPTIONS.includes(n) ? n : DEFAULT_FIBERS_PER_TUBE;
+  }
+
+  // Full lookup for fiber number n (1..1728).
+  function lookup(n, fibersPerTube) {
+    const per = normalizePerTube(fibersPerTube);
+    const tubeIndex = Math.floor((n - 1) / per);
+    const tubeNumber = tubeIndex + 1;
+    const fiberInTube = ((n - 1) % per) + 1;
+    return { fiber: n, fibersPerTube: per, tubeNumber, fiberInTube,
+      tube: marking(tubeNumber), fiberMark: marking(fiberInTube) };
+  }
+
+  function endpointText(n, fibersPerTube) {
+    const r = lookup(n, fibersPerTube);
+    return `tube #${r.tubeNumber} ${r.tube.label}, fiber ${r.fiberInTube} (${r.fiberMark.label})`;
+  }
+
+  function rangeSummary(from, to, fibersPerTube) {
+    return `From ${endpointText(from, fibersPerTube)} to ${endpointText(to, fibersPerTube)}`;
+  }
+
+  // Parse one raw text entry. Returns { state: 'empty' | 'ok' | 'error', value?, message? }.
+  function parseEntry(raw) {
+    const s = String(raw == null ? '' : raw).trim();
+    if (s === '') return { state: 'empty' };
+    if (/^\d+$/.test(s)) {
+      const value = parseInt(s, 10);
+      if (value < 1) return { state: 'error', message: 'Minimum is 1' };
+      if (value > MAX_FIBER) return { state: 'error', message: `Max is ${MAX_FIBER}` };
+      return { state: 'ok', value };
+    }
+    if (/^-\s*\d+$/.test(s)) return { state: 'error', message: 'Minimum is 1' };
+    return { state: 'error', message: 'Whole numbers only' };
+  }
+
+  function validateRange(fromRaw, toRaw) {
+    const f = parseEntry(fromRaw);
+    const t = parseEntry(toRaw);
+    if (f.state === 'empty' && t.state === 'empty') {
+      return { ok: false, idle: true, message: `Enter From and To (whole numbers 1–${MAX_FIBER}) to list fibers.` };
+    }
+    const problems = [];
+    if (f.state === 'error') problems.push(`From: ${f.message}`);
+    if (t.state === 'error') problems.push(`To: ${t.message}`);
+    if (problems.length) {
+      return { ok: false, fromInvalid: f.state === 'error', toInvalid: t.state === 'error', message: problems.join(' · ') };
+    }
+    if (f.state === 'empty') return { ok: false, fromInvalid: true, message: 'Enter a From number (1 or more)' };
+    if (t.state === 'empty') return { ok: false, toInvalid: true, message: `Enter a To number (up to ${MAX_FIBER})` };
+    if (f.value > t.value) {
+      return { ok: false, fromInvalid: true, toInvalid: true,
+        message: `Reversed range: From (${f.value}) is greater than To (${t.value}). Swap them.` };
+    }
+    return { ok: true, from: f.value, to: t.value };
+  }
+
+  // ---- DOM helpers (browser only) ----
+  // Fill a .color-pill element with the color name, stripe text and visible stripe marks.
+  function paintPill(pill, mark) {
+    pill.replaceChildren();
+    pill.style.backgroundColor = mark.color.bg;
+    pill.style.color = mark.color.text;
+    pill.style.border = mark.color.border || 'none';
+    pill.classList.toggle('has-stripes', mark.stripes > 0);
+    pill.setAttribute('aria-label', mark.label);
+    const name = document.createElement('span');
+    name.className = 'pill-name';
+    name.textContent = mark.color.name;
+    pill.appendChild(name);
+    if (!mark.stripes) return;
+    const marks = document.createElement('span');
+    marks.className = 'stripe-marks' + (mark.stripeColor === 'Yellow' ? ' stripe-yellow' : '');
+    marks.setAttribute('aria-hidden', 'true');
+    for (let i = 0; i < mark.stripes; i++) {
+      const dash = document.createElement('i');
+      dash.style.backgroundColor = mark.stripeHex;
+      // Small gap after every 5th mark so larger counts are easy to count.
+      if (i > 0 && i % 5 === 0) dash.className = 'group-start';
+      marks.appendChild(dash);
+    }
+    const text = document.createElement('span');
+    text.className = 'pill-stripe-text';
+    text.textContent = mark.stripeText;
+    pill.append(marks, text);
+  }
+
+  function paintEmptyPill(pill) {
+    pill.replaceChildren();
+    pill.textContent = '—';
+    pill.classList.remove('has-stripes');
+    pill.removeAttribute('aria-label');
+    pill.style.backgroundColor = '#2a2a2a';
+    pill.style.color = '#fff';
+    pill.style.border = 'none';
+  }
+
+  const api = { MAX_FIBER, FIBERS_PER_TUBE_OPTIONS, DEFAULT_FIBERS_PER_TUBE, COLORS,
+    marking, lookup, endpointText, rangeSummary, parseEntry, validateRange,
+    normalizePerTube, paintPill, paintEmptyPill };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.FiberCode = api;
+})(typeof self !== 'undefined' ? self : this);
+
+</script>
+  <script>
+    const FC = window.FiberCode;
+    const PER_KEY = 'fiberColorCode.fibersPerTube';
+    let fibersPerTube = FC.DEFAULT_FIBERS_PER_TUBE;
+    try { fibersPerTube = FC.normalizePerTube(localStorage.getItem(PER_KEY) || FC.DEFAULT_FIBERS_PER_TUBE); } catch (e) {}
+    window.getFibersPerTube = () => fibersPerTube;
+
+    const input = document.getElementById('fiberNum');
+    const fiberHint = document.getElementById('fiberHint');
+    const tubeLabel = document.getElementById('tubeLabel');
+    const tubePill = document.getElementById('tubePill');
+    const fiberInTubeLabel = document.getElementById('fiberInTubeLabel');
+    const fiberPill = document.getElementById('fiberPill');
+    const refGrid = document.getElementById('referenceGrid');
+    const perButtons = Array.from(document.querySelectorAll('#perTubeGroup [data-per]'));
+
+    // Build the static 1–12 chart
+    FC.COLORS.forEach(c => {
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+      item.style.backgroundColor = c.bg;
+      item.style.color = c.text;
+      if (c.border) item.style.border = c.border;
+      item.innerHTML = `<span class="legend-num">${c.id}</span><span>${c.name}</span>`;
+      refGrid.appendChild(item);
+    });
+
+    // Stripe examples
+    const legend = document.getElementById('stripeLegend');
+    [13, 20, 25, 37].forEach(pos => {
+      const row = document.createElement('div');
+      row.className = 'stripe-example';
+      const num = document.createElement('span');
+      num.className = 'stripe-example-num';
+      num.textContent = `#${pos}`;
+      const pill = document.createElement('div');
+      pill.className = 'color-pill';
+      FC.paintPill(pill, FC.marking(pos));
+      row.append(num, pill);
+      legend.appendChild(row);
+    });
+
+    function update() {
+      const entry = FC.parseEntry(input.value);
+      if (entry.state !== 'ok') {
+        tubeLabel.innerText = 'Tube';
+        FC.paintEmptyPill(tubePill);
+        fiberInTubeLabel.innerText = 'Fiber';
+        FC.paintEmptyPill(fiberPill);
+        fiberHint.textContent = entry.state === 'empty' ? 'Enter a fiber number from 1 to 1728' : entry.message;
+        fiberHint.classList.toggle('is-error', entry.state === 'error');
+        fiberHint.hidden = false;
+        input.setAttribute('aria-invalid', String(entry.state === 'error'));
+        return;
+      }
+      fiberHint.hidden = true;
+      fiberHint.textContent = '';
+      input.setAttribute('aria-invalid', 'false');
+
+      const r = FC.lookup(entry.value, fibersPerTube);
+      tubeLabel.innerText = `Tube #${r.tubeNumber}`;
+      FC.paintPill(tubePill, r.tube);
+      fiberInTubeLabel.innerText = `Fiber #${r.fiberInTube} in Tube`;
+      FC.paintPill(fiberPill, r.fiberMark);
+    }
+
+    function setFibersPerTube(value) {
+      fibersPerTube = FC.normalizePerTube(value);
+      try { localStorage.setItem(PER_KEY, String(fibersPerTube)); } catch (e) {}
+      perButtons.forEach(b => b.setAttribute('aria-checked', String(Number(b.dataset.per) === fibersPerTube)));
+      update();
+      if (window.updateRange) window.updateRange();
+    }
+    perButtons.forEach(b => b.addEventListener('click', () => setFibersPerTube(b.dataset.per)));
+    perButtons.forEach(b => b.setAttribute('aria-checked', String(Number(b.dataset.per) === fibersPerTube)));
+
+    input.addEventListener('input', update);
+    update();
+  </script>
+  <script>
+// From/To range list + one-line summary. Uses FiberCode (fiber.js) and the
+// current fibers-per-tube setting (window.getFibersPerTube from index.html).
+(function () {
+  const FC = window.FiberCode;
+  const rangeFrom = document.getElementById('rangeFrom');
+  const rangeTo = document.getElementById('rangeTo');
+  const rangeHint = document.getElementById('rangeHint');
+  const rangeSummary = document.getElementById('rangeSummary');
+  const rangeResults = document.getElementById('rangeResults');
+
+  function rangeTag(label, mark) {
+    const tag = document.createElement('div');
+    tag.className = 'tag-container';
+    const caption = document.createElement('span');
+    caption.className = 'tag-label';
+    caption.textContent = label;
+    const pill = document.createElement('div');
+    pill.className = 'color-pill';
+    FC.paintPill(pill, mark);
+    tag.append(caption, pill);
+    return tag;
+  }
+
+  function updateRange() {
+    const per = window.getFibersPerTube();
+    const check = FC.validateRange(rangeFrom.value, rangeTo.value);
+    rangeFrom.setAttribute('aria-invalid', String(!!check.fromInvalid));
+    rangeTo.setAttribute('aria-invalid', String(!!check.toInvalid));
+
+    rangeSummary.hidden = !check.ok;
+    rangeSummary.textContent = '';
+    rangeHint.hidden = check.ok;
+    rangeHint.textContent = check.ok ? '' : check.message;
+    rangeHint.classList.toggle('is-error', !check.ok && !check.idle);
+    rangeResults.hidden = !check.ok;
+    rangeResults.replaceChildren();
+    if (!check.ok) return;
+
+    rangeSummary.textContent = FC.rangeSummary(check.from, check.to, per);
+
+    const rows = document.createDocumentFragment();
+    for (let n = check.from; n <= check.to; n++) {
+      const r = FC.lookup(n, per);
+      const row = document.createElement('li');
+      row.className = 'range-row';
+      const number = document.createElement('strong');
+      number.className = 'range-number';
+      number.textContent = `Fiber #${n}`;
+      row.append(number,
+        rangeTag(`Tube #${r.tubeNumber}`, r.tube),
+        rangeTag(`Fiber #${r.fiberInTube} in Tube`, r.fiberMark));
+      rows.appendChild(row);
+    }
+    rangeResults.appendChild(rows);
+  }
+
+  window.updateRange = updateRange;
+  rangeFrom.addEventListener('input', updateRange);
+  rangeTo.addEventListener('input', updateRange);
+  updateRange();
+})();
+
+</script>
+
+</body>
+</html>
